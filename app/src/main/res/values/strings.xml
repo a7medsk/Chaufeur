@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Chaufeur</string>
+    <string name="access_token" translatable="false">pk.eyJ1IjoiY2FtbWFjZSIsImEiOiJjaW9vbGtydnQwMDAwdmRrcWlpdDVoM3pjIn0.Oy_gHelWnV12kJxHQWV7XQ</string>
+    <string name="draw_marker_options_title">Hello World!</string>
+    <string name="draw_marker_options_snippet">Welcome to my marker.</string>
+    <string name="move_map_instruction">Move map to place\\nmarker at desired location</string>
+    <string name="location_picker_select_location_button_cancel">Cancel</string>
+    <string name="location_picker_select_location_button_select">Select a location</string>
+    <string name="user_location_permission_explanation">This app needs location permissions in order to show its functionality.</string>
+    <string name="user_location_permission_not_granted">You didn\\\'t grant location permissions.</string>
+    <string name="location_picker_dropped_marker_snippet_no_results">No results</string>
+</resources>
