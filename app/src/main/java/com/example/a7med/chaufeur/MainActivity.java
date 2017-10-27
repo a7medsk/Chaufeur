@@ -35,7 +35,7 @@ import java.util.List;
 
 
 /**
- * Drop a marker at a specific location and then perfor
+ * Drop a marker at a specific location and then perform
 
  */
 public class MainActivity extends AppCompatActivity implements LocationEngineListener, PermissionsListener {
