@@ -5,7 +5,9 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -14,6 +16,8 @@ import android.widget.Toast;
 import com.mapbox.mapboxsdk.Mapbox;
 
 import com.mapbox.mapboxsdk.annotations.Marker;
+import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.location.LocationSource;
@@ -28,6 +32,10 @@ import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 import com.mapbox.services.android.telemetry.location.LocationEnginePriority;
 import com.mapbox.services.android.telemetry.permissions.PermissionsListener;
 import com.mapbox.services.android.telemetry.permissions.PermissionsManager;
+import com.mapbox.services.android.ui.geocoder.GeocoderAutoCompleteView;
+import com.mapbox.services.api.geocoding.v5.GeocodingCriteria;
+import com.mapbox.services.api.geocoding.v5.models.CarmenFeature;
+import com.mapbox.services.commons.models.Position;
 
 
 import java.util.List;
@@ -35,7 +43,7 @@ import java.util.List;
 
 
 /**
- * Drop a marker at a specific location and then perform
+ * Drop a marker at a specific location and then perform`````
 
  */
 public class MainActivity extends AppCompatActivity implements LocationEngineListener, PermissionsListener {
@@ -86,7 +94,22 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
             }
         });
 
-        // When user is still picking a location, we hover a marker above the mapboxMap in the center.
+        // Set up autocomplete widget
+        GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
+        autocomplete.setAccessToken(Mapbox.getAccessToken());
+        autocomplete.setType(GeocodingCriteria.TYPE_POI);
+        autocomplete.setOnFeatureListener(new GeocoderAutoCompleteView.OnFeatureListener() {
+            @Override
+            public void onFeatureClick(CarmenFeature feature) {
+                hideOnScreenKeyboard();
+                Position position = feature.asPosition();
+                updateMap(position.getLatitude(), position.getLongitude());
+            }
+        });
+
+
+
+    // When user is still picking a location, we hover a marker above the mapboxMap in the center.
         // This is done by using an image view with the default marker found in the SDK. You can
         // swap out for your own marker image, just make sure it matches up with the dropped marker.
         hoveringMarker = new ImageView(this);
@@ -95,10 +118,26 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         hoveringMarker.setLayoutParams(params);
+
         mapView.addView(hoveringMarker);
 
 
     }
+
+    private void updateMap(double latitude, double longitude) {
+        // Build marker
+//        mapboxMap.addMarker(new MarkerOptions()
+//                .position(new LatLng(latitude, longitude))
+//                .title(getString(R.string.geocode_activity_marker_options_title)));
+//        hoveringMarker.setVisibility(View.GONE);
+        // Animate camera to geocoder result location
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(new LatLng(latitude, longitude))
+                .zoom(15)
+                .build();
+        mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 5000, null);
+    }
+
 
     @Override
     public void onResume() {
@@ -153,6 +192,19 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
         super.onLowMemory();
         mapView.onLowMemory();
     }
+
+    private void hideOnScreenKeyboard() {
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (getCurrentFocus() != null) {
+                imm.hideSoftInputFromWindow(this.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+            }
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
+
+    }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
