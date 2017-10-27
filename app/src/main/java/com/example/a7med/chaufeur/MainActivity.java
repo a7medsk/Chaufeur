@@ -36,7 +36,7 @@ import java.util.List;
 
 /**
  * Drop a marker at a specific location and then perform
- * reverse geocoding to retrieve and display the location's address
+
  */
 public class MainActivity extends AppCompatActivity implements LocationEngineListener, PermissionsListener {
 
