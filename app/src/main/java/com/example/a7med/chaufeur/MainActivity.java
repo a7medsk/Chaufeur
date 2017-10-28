@@ -1,10 +1,14 @@
 package com.example.a7med.chaufeur;
 
+import android.graphics.PointF;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -15,8 +19,11 @@ import android.widget.Toast;
 
 import com.mapbox.mapboxsdk.Mapbox;
 
+import com.mapbox.mapboxsdk.annotations.Icon;
+import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.MarkerViewOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -33,13 +40,21 @@ import com.mapbox.services.android.telemetry.location.LocationEnginePriority;
 import com.mapbox.services.android.telemetry.permissions.PermissionsListener;
 import com.mapbox.services.android.telemetry.permissions.PermissionsManager;
 import com.mapbox.services.android.ui.geocoder.GeocoderAutoCompleteView;
+import com.mapbox.services.api.ServicesException;
 import com.mapbox.services.api.geocoding.v5.GeocodingCriteria;
+import com.mapbox.services.api.geocoding.v5.MapboxGeocoding;
 import com.mapbox.services.api.geocoding.v5.models.CarmenFeature;
+import com.mapbox.services.api.geocoding.v5.models.GeocodingResponse;
 import com.mapbox.services.commons.models.Position;
 
 
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+import static utils.Utilities.getAdressFormat;
 
 
 /**
@@ -56,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     private Button selectLocationButton;
     private PermissionsManager permissionsManager;
     private LocationLayerPlugin locationPlugin;
+    GeocoderAutoCompleteView autocomplete;
 
     private static final String TAG = "LocationPickerActivity";
 
@@ -92,12 +108,58 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
                 ).show();
 
             }
+
+
+
+
+        });
+        mapView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                if(motionEvent.getAction() == MotionEvent.ACTION_UP){
+
+                    if (mapboxMap != null) {
+                        if (droppedMarker == null) {
+                            // We first find where the hovering marker position is relative to the mapboxMap.
+                            // Then we set the visibility to gone.
+                            float coordinateX = hoveringMarker.getLeft() + (hoveringMarker.getWidth() / 2);
+                            float coordinateY = hoveringMarker.getBottom();
+                            float[] coords = new float[] {coordinateX, coordinateY};
+                            final LatLng latLng = mapboxMap.getProjection().fromScreenLocation(new PointF(coords[0], coords[1]));
+                           // hoveringMarker.setVisibility(View.GONE);
+
+
+                            // Create the marker icon the dropped marker will be using.
+                            Icon icon = IconFactory.getInstance(MainActivity.this).fromResource(R.drawable.red_marker);
+
+                            // Placing the marker on the mapboxMap as soon as possible causes the illusion
+                            // that the hovering marker and dropped marker are the same.
+                            droppedMarker = mapboxMap.addMarker(new MarkerViewOptions().position(latLng).icon(icon));
+
+                            // Finally we get the geocoding information
+                            reverseGeocode(latLng);
+                        } else {
+                            // When the marker is dropped, the user has clicked the button to cancel.
+                            // Therefore, we pick the marker back up.
+                            mapboxMap.removeMarker(droppedMarker);
+
+
+                            // Lastly, set the hovering marker back to visible.
+                            hoveringMarker.setVisibility(View.VISIBLE);
+                            droppedMarker = null;
+                        }
+                    }
+
+                    return true;
+                }
+                return false;
+            }
         });
 
         // Set up autocomplete widget
-        GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
+        autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
         autocomplete.setAccessToken(Mapbox.getAccessToken());
-        autocomplete.setType(GeocodingCriteria.TYPE_POI);
+        autocomplete.setType(GeocodingCriteria.TYPE_ADDRESS);
         autocomplete.setOnFeatureListener(new GeocoderAutoCompleteView.OnFeatureListener() {
             @Override
             public void onFeatureClick(CarmenFeature feature) {
@@ -122,6 +184,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
         mapView.addView(hoveringMarker);
 
 
+
     }
 
     private void updateMap(double latitude, double longitude) {
@@ -137,6 +200,52 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
                 .build();
         mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 5000, null);
     }
+
+    private void reverseGeocode(final LatLng point) {
+        // This method is used to reverse geocode where the user has dropped the marker.
+        try {
+            MapboxGeocoding client = new MapboxGeocoding.Builder()
+                    .setAccessToken(getString(R.string.access_token))
+                    .setCoordinates(Position.fromCoordinates(point.getLongitude(), point.getLatitude()))
+                    .setGeocodingType(GeocodingCriteria.TYPE_ADDRESS)
+                    .build();
+
+            client.enqueueCall(new Callback<GeocodingResponse>() {
+                @Override
+                public void onResponse(Call<GeocodingResponse> call, Response<GeocodingResponse> response) {
+
+                    List<CarmenFeature> results = response.body().getFeatures();
+                    if (results.size() > 0) {
+                        CarmenFeature feature = results.get(0);
+                        // If the geocoder returns a result, we take the first in the list and update
+                        // the dropped marker snippet with the information. Lastly we open the info
+                        // window.
+                        if (droppedMarker != null) {
+                            autocomplete.setText(getAdressFormat(feature.getPlaceName()));
+                          //  droppedMarker.setSnippet(feature.getPlaceName());
+                          //  mapboxMap.selectMarker(droppedMarker);
+                        }
+
+                    } else {
+                        if (droppedMarker != null) {
+                            autocomplete.setText(getAdressFormat(getString(R.string.location_picker_dropped_marker_snippet_no_results)));
+                          //  droppedMarker.setSnippet(getString(R.string.location_picker_dropped_marker_snippet_no_results));
+                           // mapboxMap.selectMarker(droppedMarker);
+                        }
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<GeocodingResponse> call, Throwable throwable) {
+                    Log.e(TAG, "Geocoding Failure: " + throwable.getMessage());
+                }
+            });
+        } catch (ServicesException servicesException) {
+            Log.e(TAG, "Error geocoding: " + servicesException.toString());
+            servicesException.printStackTrace();
+        }
+    } // reverseGeocode
+
 
 
     @Override
@@ -227,6 +336,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     public void onLocationChanged(Location location) {
         if (location != null) {
             locationEngine.removeLocationEngineListener(this);
+            Toast.makeText(this, "test", Toast.LENGTH_SHORT).show();
         }
     }
 
