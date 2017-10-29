@@ -1,8 +1,10 @@
 package com.example.a7med.chaufeur;
 
+import android.content.SharedPreferences;
 import android.graphics.PointF;
 import android.location.Location;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.content.ContextCompat;
@@ -64,10 +66,10 @@ import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import utils.SharedPreferencesHelper;
 import utils.Utilities;
 
 import static utils.Utilities.getAdressFormat;
-import static utils.Utilities.loadHashmap;
 
 
 /**
@@ -86,6 +88,8 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     GeocoderAutoCompleteView autocomplete;
     HashMap<String, LatLng> hashmap;
     Gson gson;
+    // The helper that manages writing to SharedPreferences.
+    private SharedPreferencesHelper mSharedPreferencesHelper;
 
 
     private static final String TAG = "LocationPickerActivity";
@@ -117,6 +121,10 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
         navigationView.setNavigationItemSelectedListener(this);
         menu = navigationView.getMenu();
         hashmap = new HashMap<String, LatLng>();
+
+        // Instantiate a SharedPreferencesHelper.
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        mSharedPreferencesHelper = new SharedPreferencesHelper(sharedPreferences);
 
 
         // Get the location engine object for later use.
@@ -216,21 +224,21 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
 
         mapView.addView(hoveringMarker);
 
-        Log.d(TAG, loadHashmap(this));
+        Log.d(TAG, mSharedPreferencesHelper.loadHashmap());
 
         java.lang.reflect.Type type = new TypeToken<HashMap<String, LatLng>>() {
         }.getType();
 
-        if (hashmap.size() == 0 && !loadHashmap(this).matches("oopsDintWork"))
-            hashmap = gson.fromJson(loadHashmap(this), type);
+        if (hashmap.size() == 0 && !mSharedPreferencesHelper.loadHashmap().matches(""))
+            hashmap = gson.fromJson(mSharedPreferencesHelper.loadHashmap(), type);
 
 
+        if (hashmap != null)
+            for (Map.Entry<String, LatLng> e : hashmap.entrySet()) {
+                menu.add(e.getKey());
 
-        for (Map.Entry<String,LatLng> e : hashmap.entrySet()) {
-            menu.add(e.getKey());
 
-
-        }
+            }
 
     }
 
@@ -245,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
         mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 5000, null);
     }
 
-    private void reverseGeocode(final LatLng point) {
+    public void reverseGeocode(final LatLng point) {
 
 
         // This method is used to reverse geocode where the user has dropped the marker.
@@ -329,7 +337,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
 
         String hashMapString = gson.toJson(hashmap);
 
-        Utilities.savehashmap(this, hashMapString);
+        mSharedPreferencesHelper.savehashmap(hashMapString);
     }
 
     @Override

@@ -8,6 +8,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static org.junit.Assert.*;
+import static utils.Utilities.getAdressFormat;
+import static utils.Utilities.getPostCode;
 
 /**
  * Instrumentation test, which will execute on an Android device.
@@ -23,4 +25,6 @@ public class ExampleInstrumentedTest {
 
         assertEquals("com.example.a7med.chaufeur", appContext.getPackageName());
     }
+
+
 }
