@@ -4,10 +4,17 @@ import android.graphics.PointF;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.NavigationView;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +24,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.mapbox.mapboxsdk.Mapbox;
 
 import com.mapbox.mapboxsdk.annotations.Icon;
@@ -48,20 +57,23 @@ import com.mapbox.services.api.geocoding.v5.models.GeocodingResponse;
 import com.mapbox.services.commons.models.Position;
 
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import utils.Utilities;
 
 import static utils.Utilities.getAdressFormat;
+import static utils.Utilities.loadHashmap;
 
 
 /**
  * Drop a marker at a specific location and then perform`````
-
  */
-public class MainActivity extends AppCompatActivity implements LocationEngineListener, PermissionsListener {
+public class MainActivity extends AppCompatActivity implements LocationEngineListener, PermissionsListener, NavigationView.OnNavigationItemSelectedListener {
 
     private MapView mapView;
     private MapboxMap mapboxMap;
@@ -72,19 +84,40 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     private PermissionsManager permissionsManager;
     private LocationLayerPlugin locationPlugin;
     GeocoderAutoCompleteView autocomplete;
+    HashMap<String, LatLng> hashmap;
+    Gson gson;
+
 
     private static final String TAG = "LocationPickerActivity";
+    Menu menu = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        gson = new Gson();
 
         // Mapbox access token is configured here. This needs to be called either in your application
         // object or in the same activity which contains the mapview.
         Mapbox.getInstance(this, getString(R.string.access_token));
 
         // This contains the MapView in XML and needs to be called after the access token is configured.
-        setContentView(R.layout.activity_lab_location_picker);
+        setContentView(R.layout.activity_main);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.setDrawerListener(toggle);
+        toggle.syncState();
+
+        final NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+        menu = navigationView.getMenu();
+        hashmap = new HashMap<String, LatLng>();
+
 
         // Get the location engine object for later use.
         locationEngine = new LocationSource(this);
@@ -110,13 +143,12 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
             }
 
 
-
-
         });
         mapView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
-                if(motionEvent.getAction() == MotionEvent.ACTION_UP){
+                if (motionEvent.getAction() == MotionEvent.ACTION_UP) {
+
 
                     if (mapboxMap != null) {
                         if (droppedMarker == null) {
@@ -124,9 +156,9 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
                             // Then we set the visibility to gone.
                             float coordinateX = hoveringMarker.getLeft() + (hoveringMarker.getWidth() / 2);
                             float coordinateY = hoveringMarker.getBottom();
-                            float[] coords = new float[] {coordinateX, coordinateY};
+                            float[] coords = new float[]{coordinateX, coordinateY};
                             final LatLng latLng = mapboxMap.getProjection().fromScreenLocation(new PointF(coords[0], coords[1]));
-                           // hoveringMarker.setVisibility(View.GONE);
+                            // hoveringMarker.setVisibility(View.GONE);
 
 
                             // Create the marker icon the dropped marker will be using.
@@ -166,12 +198,13 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
                 hideOnScreenKeyboard();
                 Position position = feature.asPosition();
                 updateMap(position.getLatitude(), position.getLongitude());
+                menu.add(getAdressFormat(feature.getPlaceName()));
+                hashmap.put(getAdressFormat(feature.getPlaceName()), new LatLng(position.getLatitude(), position.getLongitude()));
             }
         });
 
 
-
-    // When user is still picking a location, we hover a marker above the mapboxMap in the center.
+        // When user is still picking a location, we hover a marker above the mapboxMap in the center.
         // This is done by using an image view with the default marker found in the SDK. You can
         // swap out for your own marker image, just make sure it matches up with the dropped marker.
         hoveringMarker = new ImageView(this);
@@ -183,16 +216,27 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
 
         mapView.addView(hoveringMarker);
 
+        Log.d(TAG, loadHashmap(this));
 
+        java.lang.reflect.Type type = new TypeToken<HashMap<String, LatLng>>() {
+        }.getType();
+
+        if (hashmap.size() == 0 && !loadHashmap(this).matches("oopsDintWork"))
+            hashmap = gson.fromJson(loadHashmap(this), type);
+
+
+
+        for (Map.Entry<String,LatLng> e : hashmap.entrySet()) {
+            menu.add(e.getKey());
+
+
+        }
 
     }
 
     private void updateMap(double latitude, double longitude) {
-        // Build marker
-//        mapboxMap.addMarker(new MarkerOptions()
-//                .position(new LatLng(latitude, longitude))
-//                .title(getString(R.string.geocode_activity_marker_options_title)));
-//        hoveringMarker.setVisibility(View.GONE);
+
+//
         // Animate camera to geocoder result location
         CameraPosition cameraPosition = new CameraPosition.Builder()
                 .target(new LatLng(latitude, longitude))
@@ -202,6 +246,8 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     }
 
     private void reverseGeocode(final LatLng point) {
+
+
         // This method is used to reverse geocode where the user has dropped the marker.
         try {
             MapboxGeocoding client = new MapboxGeocoding.Builder()
@@ -222,15 +268,21 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
                         // window.
                         if (droppedMarker != null) {
                             autocomplete.setText(getAdressFormat(feature.getPlaceName()));
-                          //  droppedMarker.setSnippet(feature.getPlaceName());
-                          //  mapboxMap.selectMarker(droppedMarker);
+                            hashmap.put(getAdressFormat(feature.getPlaceName()), point);
+                            // if(hashmap.size()==15)
+                            //  menu.removeItem();
+                            menu.add(getAdressFormat(feature.getPlaceName()));
+
+
+                            //  droppedMarker.setSnippet(feature.getPlaceName());
+                            //  mapboxMap.selectMarker(droppedMarker);
                         }
 
                     } else {
                         if (droppedMarker != null) {
                             autocomplete.setText(getAdressFormat(getString(R.string.location_picker_dropped_marker_snippet_no_results)));
-                          //  droppedMarker.setSnippet(getString(R.string.location_picker_dropped_marker_snippet_no_results));
-                           // mapboxMap.selectMarker(droppedMarker);
+                            //  droppedMarker.setSnippet(getString(R.string.location_picker_dropped_marker_snippet_no_results));
+                            // mapboxMap.selectMarker(droppedMarker);
                         }
                     }
                 }
@@ -245,7 +297,6 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
             servicesException.printStackTrace();
         }
     } // reverseGeocode
-
 
 
     @Override
@@ -266,6 +317,8 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     @Override
     protected void onStop() {
         super.onStop();
+
+
         if (locationEngine != null) {
             locationEngine.removeLocationUpdates();
         }
@@ -273,6 +326,10 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
             locationPlugin.onStop();
         }
         mapView.onStop();
+
+        String hashMapString = gson.toJson(hashmap);
+
+        Utilities.savehashmap(this, hashMapString);
     }
 
     @Override
@@ -284,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-       mapView.onSaveInstanceState(outState);
+        mapView.onSaveInstanceState(outState);
     }
 
     @Override
@@ -327,7 +384,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     }
 
     @Override
-    @SuppressWarnings( {"MissingPermission"})
+    @SuppressWarnings({"MissingPermission"})
     public void onConnected() {
         locationEngine.requestLocationUpdates();
     }
@@ -351,8 +408,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     }
 
 
-
-    @SuppressWarnings( {"MissingPermission"})
+    @SuppressWarnings({"MissingPermission"})
     private void enableLocationPlugin() {
         // Check if permissions are enabled and if not request
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
@@ -367,7 +423,7 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
         }
     }
 
-    @SuppressWarnings( {"MissingPermission"})
+    @SuppressWarnings({"MissingPermission"})
     private void initializeLocationEngine() {
         locationEngine = new LostLocationEngine(MainActivity.this);
         locationEngine.setPriority(LocationEnginePriority.HIGH_ACCURACY);
@@ -384,5 +440,49 @@ public class MainActivity extends AppCompatActivity implements LocationEngineLis
     private void setCameraPosition(Location location) {
         mapboxMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
                 new LatLng(location.getLatitude(), location.getLongitude()), 16));
+    }
+
+
+    @Override
+    public void onBackPressed() {
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        if (drawer.isDrawerOpen(GravityCompat.START)) {
+            drawer.closeDrawer(GravityCompat.START);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @SuppressWarnings("StatementWithEmptyBody")
+    @Override
+    public boolean onNavigationItemSelected(MenuItem item) {
+        // Handle navigation view item clicks here.
+//
+        updateMap(hashmap.get(item.toString()).getLatitude(), hashmap.get(item.toString()).getLongitude());
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawer.closeDrawer(GravityCompat.START);
+        return true;
     }
 }
