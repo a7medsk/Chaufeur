@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "1065226004298",
+    "firebase_url": "https://chauffeurprive-1509023934180.firebaseio.com",
+    "project_id": "chauffeurprive-1509023934180",
+    "storage_bucket": "chauffeurprive-1509023934180.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1065226004298:android:638059764193ceb9",
+        "android_client_info": {
+          "package_name": "com.example.a7med.chaufeur"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1065226004298-of73o55v8bvunmsdq1jnpch3136ejn7s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdCVqCT9AoL0t2tsJWk_G0MzqW6RvxLTA"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

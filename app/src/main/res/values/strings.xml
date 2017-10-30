@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Chaufeur</string>
+    <string name="app_name">Chauffeur Privé</string>
     <string name="access_token" translatable="false">pk.eyJ1IjoiY2FtbWFjZSIsImEiOiJjaW9vbGtydnQwMDAwdmRrcWlpdDVoM3pjIn0.Oy_gHelWnV12kJxHQWV7XQ</string>
     <string name="draw_marker_options_title">Hello World!</string>
     <string name="draw_marker_options_snippet">Welcome to my marker.</string>
@@ -15,4 +15,5 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
     <string name="action_settings">Settings</string>
+    <string name="auth_failed">Identifiants incorrects...</string>
 </resources>
